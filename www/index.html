@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#10151d">
+<title>Hugo Kingsley · Chess Atelier</title>
+<style>
+/* 棋子字型：若未放入字型檔，會自動退回系統符號字型 */
+@font-face{
+  font-family:'ChessGlyph';
+  src:url('./vendor/NotoSansSymbols2-Regular.woff2') format('woff2');
+  unicode-range:U+2654-265F;
+  font-display:swap;
+}
+:root{color-scheme:dark;--accent:#d8b56c;--panel:#191f2a;--line:#30394a;--muted:#a5aec0;--hint:#d8b56c}
+*{box-sizing:border-box}
+html,body{overscroll-behavior:none}
+body{
+  margin:0;background:radial-gradient(ellipse at top left,#253044,transparent 55%),#10151d;
+  color:#edf1f7;font:14px/1.6 system-ui,"Noto Sans TC",sans-serif;
+  padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-tap-highlight-color:transparent;
+}
+button,input,select{font:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:#242d3d;color:#edf1f7;padding:9px 13px;border-radius:9px}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--accent);color:#151820;font-weight:700}
+select,input[type=text],textarea{background:#111823;color:#edf1f7;border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0}
+select{width:100%}
+h1,h2,h3,p{margin:0}h2{font-size:19px}h3{font-size:14px}
+.muted{color:var(--muted)}.eyebrow{font-size:10px;color:var(--accent);letter-spacing:2px}
+header{max-width:1400px;margin:auto;padding:20px 24px;padding-top:calc(20px + env(safe-area-inset-top));border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:12px}.brand-icon{font-size:36px;color:var(--accent)}h1{font:600 24px Georgia,serif}
+main{max-width:1400px;margin:auto;padding:24px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start}
+main>div{min-width:0}
+.panel{padding:20px;background:var(--panel);border:1px solid var(--line);border-radius:16px;min-width:0}
+.hero{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px}
+.badge{border:1px solid #d8b56c55;border-radius:20px;padding:4px 10px;color:var(--accent);font-size:11px;white-space:nowrap}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.card{padding:12px;border:1px solid var(--line);border-radius:10px;background:#111823;min-width:0}
+.card p{font-size:12px;color:var(--muted);margin:6px 0}
+.card select,.card button{margin-top:7px;width:100%}
+.game-area{width:100%;max-width:700px;margin:auto;min-width:0}
+.player{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;gap:10px}
+.player small{display:block;font-size:10px;color:var(--muted)}
+.clock{font:23px ui-monospace,monospace;padding:8px 12px;min-width:106px;text-align:center;border:1px solid var(--line);border-radius:8px;background:#111823;color:var(--muted)}
+.clock.active{color:#fff;border-color:var(--accent)}
+.board-frame{width:100%;padding:10px;background:linear-gradient(145deg,#485062,#10151f);border:1px solid #ffffff20;border-radius:12px;box-shadow:0 15px 40px #0005;min-width:0}
+.board-box{position:relative;width:100%;aspect-ratio:1/1;min-width:0;overflow:hidden;border-radius:4px}
+@supports not (aspect-ratio:1/1){.board-box{height:0;padding-top:100%}}
+#board{
+  position:absolute;inset:0;display:grid;
+  grid-template-columns:repeat(8,minmax(0,1fr));
+  grid-template-rows:repeat(8,minmax(0,1fr));
+  gap:0;padding:0;margin:0;width:100%;height:100%;
+  min-width:0;min-height:0;overflow:hidden;touch-action:manipulation;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+}
+#board>.sq{
+  position:relative;display:block;width:100%;height:100%;
+  min-width:0;min-height:0;margin:0;padding:0;border:0;border-radius:0;
+  overflow:hidden;isolation:isolate;appearance:none;-webkit-appearance:none;
+  background:var(--tile);line-height:0;box-shadow:none;contain:layout paint;
+}
+#board>.sq:hover{background:var(--tile);border:0}
+#board>.sq:focus-visible{outline:3px solid var(--hint);outline-offset:-3px;z-index:5}
+.sq::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none}
+.board-wood .sq::before{background:repeating-linear-gradient(8deg,#fff0 0 5px,#0002 6px,#fff1 8px,#fff0 11px),repeating-linear-gradient(92deg,#0000 0 18px,#0001 19px 20px)}
+.board-marble .sq::before{background:repeating-linear-gradient(132deg,transparent 0 19px,#fff3 20px,transparent 23px,#0001 26px,transparent 31px)}
+.board-metal .sq::before{background:repeating-linear-gradient(0deg,#fff0 0 2px,#fff1 3px,#0001 4px),linear-gradient(135deg,#fff4,transparent 42%,#0003)}
+.board-glass .sq::before{background:linear-gradient(135deg,#ffffff65,transparent 43%,#ffffff15);box-shadow:inset 0 0 0 1px #ffffff35}
+.board-carbon .sq::before{background:repeating-conic-gradient(#0003 0% 25%,#ffffff12 0% 50%) 0 0/10px 10px}
+.board-leather .sq::before{background:radial-gradient(#0004 .7px,transparent 1px) 0 0/4px 5px,radial-gradient(#fff2 .6px,transparent 1px) 2px 2px/5px 4px}
+.board-ceramic .sq::before{background:linear-gradient(140deg,#fff3,transparent 52%);box-shadow:inset 0 0 0 1px #0001}
+.sq.last::after,.sq.selected::after,.sq.check::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none}
+.sq.last::after{background:var(--hint);opacity:.24}
+.sq.selected::after{box-shadow:inset 0 0 0 3px var(--hint)}
+.sq.check::after{background:radial-gradient(#ef4444bb,transparent 75%)}
+#board .piece{
+  position:absolute;left:4%;top:4%;width:92%;height:92%;
+  display:block;min-width:0;min-height:0;max-width:92%;max-height:92%;
+  z-index:2;pointer-events:none;filter:drop-shadow(0 2px 2px #0005);
+}
+.coord{position:absolute;z-index:3;font-size:10px;line-height:1.1;font-weight:700;color:#000a;pointer-events:none}
+.rank{left:3px;top:3px}.file{right:3px;bottom:2px}
+.dot{position:absolute;left:39%;top:39%;width:22%;height:22%;background:var(--hint);border-radius:50%;opacity:.7;z-index:4;pointer-events:none}
+.capture-dot{left:9%;top:9%;width:82%;height:82%;background:transparent;border:3px solid var(--hint)}
+#status{color:var(--accent);font-weight:600;min-height:43px;padding:11px 0}
+.controls{display:flex;gap:7px;flex-wrap:wrap}
+.history{margin-top:18px}.history-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+#moves{display:grid;grid-template-columns:38px minmax(0,1fr) minmax(0,1fr);gap:4px;max-height:160px;overflow:auto;font:12px ui-monospace,monospace}
+#moves span{padding:7px;background:#111823;border-radius:4px}
+.studio{position:sticky;top:16px}
+.section{border-top:1px solid var(--line);padding-top:14px;margin-top:16px}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.section-title small{color:var(--muted);font-size:11px}
+.materials{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.material{background:#111823;padding:7px 3px;font-size:11px}
+.material.active{color:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.sample{display:block;height:21px;border-radius:3px;margin-bottom:4px}
+.themes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.theme{text-align:left;background:#111823;padding:8px;font-size:11px}
+.swatches{display:flex;gap:3px;margin-bottom:5px}.swatches i{height:15px;flex:1;border-radius:3px}
+.color-row{display:grid;grid-template-columns:minmax(0,1fr) 36px 85px;gap:7px;align-items:center;font-size:12px;margin-top:9px}
+input[type=color]{padding:2px;width:36px;height:31px;border:1px solid var(--line);background:transparent;border-radius:6px;cursor:pointer}
+.color-row input[type=text]{width:100%;font:11px ui-monospace,monospace;padding:7px}
+.toggle{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-size:12px}
+input[type=checkbox]{accent-color:var(--accent)}
+.actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}.actions button{flex:1;font-size:11px;padding:7px 8px}
+.note{font-size:11px;color:var(--muted);margin-top:10px}
+.studio-hidden main{grid-template-columns:minmax(0,1fr)}.studio-hidden .studio{display:none}
+footer{max-width:1400px;margin:auto;padding:0 24px 24px;font-size:11px;color:var(--muted)}
+dialog{background:var(--panel);color:#edf1f7;border:1px solid var(--line);border-radius:15px;padding:24px;width:calc(100% - 32px);max-width:460px}
+dialog::backdrop{background:#000a}
+dialog p{color:var(--muted);margin:12px 0}
+.promotions{display:flex;gap:7px}.promotions button{flex:1;font-size:30px}
+#textBody{width:100%;height:180px;font:11px ui-monospace,monospace;resize:vertical;white-space:pre;overflow:auto}
+#toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);padding:10px 16px;background:#edf1f7;color:#18212c;border-radius:10px;z-index:99;max-width:90vw}
+[hidden]{display:none!important}
+@media(max-width:1000px){main{grid-template-columns:minmax(0,1fr) 290px;padding:18px;gap:15px}.panel{padding:14px}.modes{grid-template-columns:1fr}.card p{margin:3px 0}.card select,.card button{margin-top:5px}}
+@media(max-width:740px){main{grid-template-columns:minmax(0,1fr);padding:14px}.studio{position:static}header{padding:15px;padding-top:calc(15px + env(safe-area-inset-top))}h1{font-size:20px}.eyebrow{letter-spacing:1px}.board-frame{padding:7px}.hero h2{font-size:17px}.coord{font-size:8px}header button{font-size:12px;padding:8px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="brand-icon">♔</span><div><h1>Hugo Kingsley</h1><div class="eyebrow">CHESS · YOUR STYLE, YOUR GAME</div></div></div>
+  <button id="studioToggle" aria-expanded="true">◈ 外觀工作室</button>
+</header>
+<main>
+  <div>
+    <section class="panel">
+      <div class="hero"><div><div class="eyebrow">THE CHESS ROOM</div><h2>每一步，都有你的風格。</h2></div><span class="badge" id="modeBadge">尚未開始</span></div>
+      <div id="lobby">
+        <p class="muted">先選模式，或隨時設計你的棋盤外觀。</p>
+        <div class="modes">
+          <div class="card"><h3>♟ AI 對弈</h3><p>不同搜索難度，黑白任選。</p>
+            <select id="difficulty" aria-label="AI 難度"><option value="1">入門 · 隨機與吃子</option><option value="2" selected>中級 · 搜索 2 層</option><option value="3">挑戰 · 搜索 3 層</option></select>
+            <select id="side" aria-label="執棋顏色"><option value="w">我執白棋</option><option value="b">我執黑棋</option></select>
+            <button id="startAI" class="primary" disabled>載入棋規中…</button>
+          </div>
+          <div class="card"><h3>♙ 本機雙人</h3><p>與身邊朋友輪流走子。</p><button id="startLocal" disabled>開始雙人對局</button></div>
+          <div class="card"><h3>◎ 真人連線</h3><p>尚未連接配對伺服器，不會以 AI 冒充真人。</p><button id="onlineInfo">連線說明</button></div>
+        </div>
+      </div>
+      <div class="game-area">
+        <div class="player"><div><strong id="topName">黑方</strong><small id="topDetail">BLACK PIECES</small></div><div class="clock" id="topClock">10:00</div></div>
+        <div class="board-frame"><div class="board-box"><div id="board" role="group" aria-label="8 行 8 列等比例國際象棋棋盤"></div></div></div>
+        <div class="player"><div><strong id="bottomName">白方</strong><small id="bottomDetail">WHITE PIECES</small></div><div class="clock" id="bottomClock">10:00</div></div>
+        <div id="status" role="status" aria-live="polite">可以先自由選擇棋盤與棋子外觀。</div>
+        <div class="controls"><button id="flip">⇅ 翻轉棋盤</button><button id="undo" disabled>↶ 悔棋</button><button id="resign" disabled>認輸</button><button id="back">返回大廳</button></div>
+      </div>
+    </section>
+    <section class="panel history"><div class="history-head"><h3>對局記錄</h3><button id="pgn" disabled>匯出 PGN</button></div><div id="moves"></div></section>
+  </div>
+  <aside class="panel studio" id="studio">
+    <div class="eyebrow">APPEARANCE ATELIER · 即時套用</div><h2>外觀工作室</h2>
+    <p class="muted" style="font-size:12px">任何時候更改，不重設棋局或計時。</p>
+    <div class="section"><div class="section-title"><h3>01 / 一鍵主題</h3></div><div id="themes" class="themes"></div></div>
+    <div class="section"><div class="section-title"><h3>02 / 棋盤材質</h3><small id="boardMaterialName"></small></div><div id="boardMaterials" class="materials"></div><div id="boardColors"></div></div>
+    <div class="section"><div class="section-title"><h3>03 / 棋子材質</h3><small id="pieceMaterialName"></small></div><div id="pieceMaterials" class="materials"></div><div id="pieceColors"></div></div>
+    <div class="section"><h3>04 / 棋盤輔助</h3><div id="hintColor"></div>
+      <label class="toggle">顯示座標<input id="coordinates" type="checkbox"></label>
+      <label class="toggle">顯示合法走法<input id="showHints" type="checkbox"></label>
+      <label class="toggle">標示上一手<input id="lastMove" type="checkbox"></label>
+      <div class="actions"><button id="exportStyle">匯出外觀</button><button id="importStyle">匯入外觀</button><button id="resetStyle">還原預設</button></div>
+      <input type="file" id="styleFile" accept=".json,application/json" hidden>
+      <p class="note" id="saveNote"></p>
+      <p class="note">棋盤固定 8 × 8 等分。棋子與標記不參與格子尺寸計算。</p>
+    </div>
+  </aside>
+</main>
+<footer>離線版：棋規與 AI 全部內建，無需網絡。材質為 2D 視覺效果。AI 搜索難度不代表認證 Elo。</footer>
+<dialog id="infoDialog"><h2 id="dialogTitle"></h2><p id="dialogText"></p><button id="closeDialog" class="primary">明白</button></dialog>
+<dialog id="promoDialog"><h2>選擇升變棋子</h2><p>計時繼續，選擇後完成這一步。</p><div class="promotions" id="promoOptions"></div></dialog>
+<dialog id="textDialog"><h2 id="textTitle"></h2><p>在手機上可長按選取，或按下方按鈕複製。</p>
+  <textarea id="textBody" readonly spellcheck="false"></textarea>
+  <div class="actions"><button id="copyText" class="primary">複製</button><button id="closeText">關閉</button></div>
+</dialog>
+<div id="toast" role="status" hidden></div>
+<script type="module">
+const $=id=>document.getElementById(id);
+/* 離線：改為本地檔案，不再使用 CDN */
+const ENGINE='./vendor/chess.js';
+const WORKER='./ai-worker.js';
+
+const boardMats=[
+  ['wood','胡桃木','repeating-linear-gradient(8deg,#cfad76 0 5px,#8b623e 6px,#cfad76 9px)'],
+  ['marble','大理石','repeating-linear-gradient(132deg,#b8c9c6 0 15px,#eee 17px,#a3b2ae 19px,#b8c9c6 24px)'],
+  ['metal','金屬','linear-gradient(135deg,#e2e6eb,#7e899c,#dce1e8)'],
+  ['glass','玻璃','linear-gradient(135deg,#c2eff4,#4b91a9)'],
+  ['carbon','碳纖維','repeating-conic-gradient(#323943 0% 25%,#141a23 0% 50%) 0 0/8px 8px'],
+  ['leather','皮革','radial-gradient(#281a17 1px,transparent 1px) 0 0/4px 4px,#815447'],
+  ['ceramic','陶瓷','linear-gradient(135deg,#f6eae0,#c6b7ac)']
+];
+const pieceMats=[
+  ['wood','木雕','linear-gradient(120deg,#e6c083,#735236)'],
+  ['metal','拋光金屬','linear-gradient(110deg,#444b56,#f7e7b7,#7e7361,#fff1c5)'],
+  ['crystal','水晶','linear-gradient(130deg,#eafaff,#51a8c8,#c8f7ff)'],
+  ['ceramic','陶瓷','linear-gradient(130deg,#fff8f1,#d0bba7)'],
+  ['matte','磨砂','linear-gradient(130deg,#b5bbc5,#737b8a)'],
+  ['stone','石材','repeating-linear-gradient(145deg,#bbbdb8 0 13px,#e3e0d5 15px,#8f9695 18px)']
+];
+const themes=[
+  {name:'經典木藝',boardMaterial:'wood',pieceMaterial:'wood',light:'#dfc6a0',dark:'#785238',white:'#fff5df',black:'#27282e',hint:'#d8b56c'},
+  {name:'黑金皇室',boardMaterial:'metal',pieceMaterial:'metal',light:'#ac996d',dark:'#252a33',white:'#f5d382',black:'#59616d',hint:'#facc68'},
+  {name:'冰晶藍',boardMaterial:'glass',pieceMaterial:'crystal',light:'#c4e7ee',dark:'#42728a',white:'#e4fbff',black:'#1c3c6f',hint:'#53f3df'},
+  {name:'翡翠石紋',boardMaterial:'marble',pieceMaterial:'stone',light:'#d7e4d6',dark:'#3d7565',white:'#fff1d0',black:'#23473a',hint:'#ffc56b'},
+  {name:'玫瑰陶瓷',boardMaterial:'ceramic',pieceMaterial:'ceramic',light:'#f4dedc',dark:'#a66f80',white:'#fff6ee',black:'#542e4a',hint:'#89e0d1'},
+  {name:'極簡碳黑',boardMaterial:'carbon',pieceMaterial:'matte',light:'#9ea8b6',dark:'#303846',white:'#f1f5fa',black:'#101722',hint:'#aeed64'},
+  {name:'復古皮革',boardMaterial:'leather',pieceMaterial:'wood',light:'#cfae82',dark:'#6b4338',white:'#f4e3bf',black:'#30201f',hint:'#eed06d'},
+  {name:'紫夜水晶',boardMaterial:'glass',pieceMaterial:'crystal',light:'#c9b9e1',dark:'#554374',white:'#f5e4ff',black:'#372755',hint:'#f2b5d3'}
+];
+const defaults={...themes[0],coordinates:true,showHints:true,lastMove:true};delete defaults.name;
+const validHex=v=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v);
+function sanitize(data){
+  const a={...defaults};if(!data||typeof data!=='object')return a;
+  for(const k of ['light','dark','white','black','hint'])if(validHex(data[k]))a[k]=data[k].toLowerCase();
+  if(boardMats.some(m=>m[0]===data.boardMaterial))a.boardMaterial=data.boardMaterial;
+  if(pieceMats.some(m=>m[0]===data.pieceMaterial))a.pieceMaterial=data.pieceMaterial;
+  for(const k of ['coordinates','showHints','lastMove'])if(typeof data[k]==='boolean')a[k]=data[k];
+  return a;
+}
+let appearance={...defaults},storageOK=true;
+try{appearance=sanitize(JSON.parse(localStorage.getItem('hk-appearance-v3')||'null'));}catch{}
+let ChessClass,game=null,mode=null,myColor='w',flipped=false,selected=null,targets=[],last=null;
+let running=false,thinking=false,pendingPromo=null,clocks={w:600000,b:600000},clockSnapshots=[],lastTick=performance.now();
+let worker=null,generation=0,toastTimer=null,aiDepth=2;
+const glyph={k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'},labels={k:'王',q:'后',r:'車',b:'象',n:'馬',p:'兵'};
+function toast(text){$('toast').textContent=text;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2800);}
+function dialog(title,text){$('dialogTitle').textContent=title;$('dialogText').textContent=text;if(!$('infoDialog').open)$('infoDialog').showModal();}
+$('closeDialog').onclick=()=>$('infoDialog').close();
+function showText(title,text){$('textTitle').textContent=title;$('textBody').value=text;if(!$('textDialog').open)$('textDialog').showModal();}
+$('closeText').onclick=()=>$('textDialog').close();
+$('copyText').onclick=async()=>{
+  const ta=$('textBody');
+  try{await navigator.clipboard.writeText(ta.value);toast('已複製到剪貼簿');}
+  catch{ta.removeAttribute('readonly');ta.select();try{document.execCommand('copy');toast('已複製');}catch{toast('請手動長按選取');}ta.setAttribute('readonly','');}
+};
+function mix(hex,to,ratio){
+  const n=parseInt(hex.slice(1),16),t=parseInt(to.slice(1),16);
+  return '#'+[16,8,0].map(s=>Math.round(((n>>s)&255)*(1-ratio)+((t>>s)&255)*ratio).toString(16).padStart(2,'0')).join('');
+}
+function pieceSVG(p,square){
+  const base=appearance[p.color==='w'?'white':'black'],bright=mix(base,'#ffffff',.52),shade=mix(base,'#000000',.44);
+  const mat=appearance.pieceMaterial,id='piece-'+square;
+  let stops,texture='';
+  if(mat==='metal')stops=`<stop stop-color="${shade}"/><stop offset=".3" stop-color="${bright}"/><stop offset=".46" stop-color="${base}"/><stop offset=".6" stop-color="${shade}"/><stop offset=".83" stop-color="${bright}"/><stop offset="1" stop-color="${base}"/>`;
+  else if(mat==='crystal')stops=`<stop stop-color="${bright}"/><stop offset=".36" stop-color="${base}" stop-opacity=".82"/><stop offset=".55" stop-color="${bright}"/><stop offset="1" stop-color="${shade}"/>`;
+  else if(mat==='matte')stops=`<stop stop-color="${mix(base,'#ffffff',.12)}"/><stop offset="1" stop-color="${mix(base,'#000000',.15)}"/>`;
+  else stops=`<stop stop-color="${bright}"/><stop offset=".45" stop-color="${base}"/><stop offset="1" stop-color="${shade}"/>`;
+  if(mat==='wood')texture=`<pattern id="${id}-tex" width="13" height="9" patternUnits="userSpaceOnUse"><path d="M0 3Q6 0 13 4M0 7Q7 4 13 8" fill="none" stroke="#000" stroke-opacity=".16" stroke-width=".8"/></pattern>`;
+  if(mat==='stone')texture=`<pattern id="${id}-tex" width="23" height="25" patternUnits="userSpaceOnUse"><path d="M0 23L9 13 11 16 23 1" fill="none" stroke="#fff" stroke-opacity=".24" stroke-width="1.2"/></pattern>`;
+  const outline=p.color==='w'?mix(base,'#000000',.7):mix(base,'#ffffff',.45);
+  const text=`x="50" y="78" text-anchor="middle" font-size="83" font-family="'ChessGlyph','Noto Sans Symbols 2','Noto Sans Symbols','DejaVu Sans','Segoe UI Symbol',sans-serif"`;
+  return `<svg class="piece" width="100" height="100" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><defs><linearGradient id="${id}" x1="0%" y1="0%" x2="100%" y2="100%">${stops}</linearGradient>${texture}</defs><text ${text} fill="url(#${id})" stroke="${outline}" stroke-width="1.1" paint-order="stroke fill">${glyph[p.type]}</text>${texture?`<text ${text} fill="url(#${id}-tex)">${glyph[p.type]}</text>`:''}</svg>`;
+}
+function initialPiece(square){
+  const rank=+square[1],file='abcdefgh'.indexOf(square[0]),back=['r','n','b','q','k','b','n','r'];
+  if(rank===1||rank===8)return {type:back[file],color:rank===1?'w':'b'};
+  if(rank===2||rank===7)return {type:'p',color:rank===2?'w':'b'};return null;
+}
+function drawBoard(){
+  $('board').className='board-'+appearance.boardMaterial;
+  const frag=document.createDocumentFragment();
+  for(let row=0;row<8;row++)for(let col=0;col<8;col++){
+    const file=flipped?7-col:col,rank=flipped?row+1:8-row,square='abcdefgh'[file]+rank;
+    const p=game?game.get(square):initialPiece(square),light=(file+rank)%2===0;
+    const b=document.createElement('button');b.type='button';b.className='sq';b.dataset.square=square;
+    b.style.setProperty('--tile',appearance[light?'light':'dark']);
+    b.setAttribute('aria-label',square+(p?' '+(p.color==='w'?'白':'黑')+labels[p.type]:' 空格'));
+    if(last&&appearance.lastMove&&(square===last.from||square===last.to))b.classList.add('last');
+    if(square===selected)b.classList.add('selected');
+    if(game?.isCheck()&&p?.type==='k'&&p.color===game.turn())b.classList.add('check');
+    if(p)b.innerHTML=pieceSVG(p,square);
+    if(appearance.coordinates){
+      if(col===0)b.insertAdjacentHTML('beforeend',`<span class="coord rank">${rank}</span>`);
+      if(row===7)b.insertAdjacentHTML('beforeend',`<span class="coord file">${square[0]}</span>`);
+    }
+    if(appearance.showHints&&targets.some(m=>m.to===square))b.insertAdjacentHTML('beforeend',`<i class="dot ${p?'capture-dot':''}"></i>`);
+    b.onclick=()=>clickSquare(square);frag.appendChild(b);
+  }
+  $('board').replaceChildren(frag);
+}
+function colorControl(container,key,title){
+  const row=document.createElement('label');row.className='color-row';
+  row.innerHTML=`<span>${title}</span><input type="color" id="${key}Picker" aria-label="${title}"><input type="text" id="${key}Hex" aria-label="${title}色碼" maxlength="7" spellcheck="false">`;
+  $(container).appendChild(row);
+  $(key+'Picker').oninput=e=>{appearance[key]=e.target.value;applyAppearance();};
+  $(key+'Hex').oninput=e=>{if(validHex(e.target.value)){appearance[key]=e.target.value.toLowerCase();applyAppearance();}};
+  $(key+'Hex').onblur=()=>{$(key+'Hex').value=appearance[key];};
+}
+function buildStudio(){
+  themes.forEach(t=>{
+    const b=document.createElement('button');b.className='theme';
+    b.innerHTML=`<span class="swatches">${['light','dark','white','black'].map(k=>`<i style="background:${t[k]}"></i>`).join('')}</span>${t.name}`;
+    b.onclick=()=>{const {name,...a}=t;Object.assign(appearance,a);applyAppearance();toast('已套用「'+name+'」，棋局不變');};
+    $('themes').appendChild(b);
+  });
+  for(const [container,mats,key] of [['boardMaterials',boardMats,'boardMaterial'],['pieceMaterials',pieceMats,'pieceMaterial']]){
+    mats.forEach(([id,name,bg])=>{
+      const b=document.createElement('button');b.className='material';b.dataset.material=id;
+      b.innerHTML=`<span class="sample" style="background:${bg}"></span>${name}`;
+      b.onclick=()=>{appearance[key]=id;applyAppearance();};$(container).appendChild(b);
+    });
+  }
+  colorControl('boardColors','light','淺色格');colorControl('boardColors','dark','深色格');
+  colorControl('pieceColors','white','白方棋子');colorControl('pieceColors','black','黑方棋子');colorControl('hintColor','hint','走法／選取色');
+  for(const k of ['coordinates','showHints','lastMove'])$(k).onchange=e=>{appearance[k]=e.target.checked;applyAppearance();};
+}
+function applyAppearance(){
+  document.documentElement.style.setProperty('--hint',appearance.hint);
+  for(const k of ['light','dark','white','black','hint']){
+    $(k+'Picker').value=appearance[k];if(document.activeElement!==$(k+'Hex'))$(k+'Hex').value=appearance[k];
+  }
+  for(const [container,key,mats,name] of [['boardMaterials','boardMaterial',boardMats,'boardMaterialName'],['pieceMaterials','pieceMaterial',pieceMats,'pieceMaterialName']]){
+    $(container).querySelectorAll('button').forEach(b=>{const active=b.dataset.material===appearance[key];b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
+    $(name).textContent=mats.find(m=>m[0]===appearance[key])[1];
+  }
+  for(const k of ['coordinates','showHints','lastMove'])$(k).checked=appearance[k];
+  try{localStorage.setItem('hk-appearance-v3',JSON.stringify(appearance));}catch{storageOK=false;}
+  $('saveNote').textContent=storageOK?'外觀已自動儲存。材質為 2D 模擬效果。':'此環境不允許儲存，建議匯出外觀備份。';
+  drawBoard();
+}
+$('exportStyle').onclick=()=>showText('匯出外觀設定',JSON.stringify({version:1,...appearance},null,2));
+$('importStyle').onclick=()=>$('styleFile').click();
+$('styleFile').onchange=async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{
+    if(file.size>20000)throw Error();
+    const data=JSON.parse(await file.text());
+    if(!data||!['light','dark','white','black','hint'].every(k=>validHex(data[k]))||!boardMats.some(m=>m[0]===data.boardMaterial)||!pieceMats.some(m=>m[0]===data.pieceMaterial))throw Error();
+    appearance=sanitize(data);applyAppearance();toast('外觀已匯入');
+  }catch{toast('請選擇有效的外觀 JSON 檔案。');}e.target.value='';
+};
+$('resetStyle').onclick=()=>{appearance={...defaults};applyAppearance();toast('已還原預設外觀，棋局不變');};
+$('studioToggle').onclick=()=>{
+  const hidden=document.body.classList.toggle('studio-hidden');$('studioToggle').setAttribute('aria-expanded',String(!hidden));
+  if(!hidden&&innerWidth<741)$('studio').scrollIntoView({behavior:'smooth',block:'start'});
+};
+$('onlineInfo').onclick=()=>dialog('真人連線尚未啟用','真正在線配對需要後端伺服器、玩家房間、棋步驗證及伺服器計時。這個離線版本提供 AI 和本機雙人，沒有假裝是真人的電腦對手。');
+function invalidateAI(){generation++;worker?.terminate();worker=null;thinking=false;}
+function settleClock(){
+  const now=performance.now();
+  if(running&&game){
+    const side=game.turn();clocks[side]=Math.max(0,clocks[side]-(now-lastTick));
+    if(clocks[side]===0){
+      running=false;invalidateAI();selected=null;targets=[];pendingPromo=null;
+      if($('promoDialog').open)$('promoDialog').close();
+      const other=side==='w'?'b':'w',onlyKing=game.board().flat().filter(p=>p?.color===other).every(p=>p.type==='k');
+      endGame(onlyKing?'超時和棋':'超時',onlyKing?'另一方只剩王，沒有將死可能。':(side==='w'?'白方':'黑方')+'時間用完。');
+    }
+  }
+  lastTick=now;
+}
+function fmt(ms){const s=Math.ceil(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function updateClocks(){
+  const top=flipped?'w':'b',bottom=flipped?'b':'w';
+  $('topClock').textContent=fmt(clocks[top]);$('bottomClock').textContent=fmt(clocks[bottom]);
+  $('topClock').classList.toggle('active',running&&game?.turn()===top);$('bottomClock').classList.toggle('active',running&&game?.turn()===bottom);
+}
+setInterval(()=>{settleClock();updateClocks();},100);
+function nameFor(c){return (mode==='ai'?(c===myColor?'你 · ':'AI · '):'')+(c==='w'?'白方':'黑方');}
+function refresh(){
+  drawBoard();updateClocks();
+  const top=flipped?'w':'b',bottom=flipped?'b':'w';
+  $('topName').textContent=nameFor(top);$('bottomName').textContent=nameFor(bottom);
+  $('topDetail').textContent=top==='w'?'WHITE PIECES':'BLACK PIECES';$('bottomDetail').textContent=bottom==='w'?'WHITE PIECES':'BLACK PIECES';
+  $('undo').disabled=!running||thinking||!game?.history().length||!!pendingPromo;
+  $('resign').disabled=!running;$('pgn').disabled=!game?.history().length;
+  if(running)$('status').textContent=thinking?'AI 正在思考…':(game.turn()==='w'?'白方':'黑方')+'走子'+(game.isCheck()?' · 將軍！':'');
+  const h=game?.history()||[],frag=document.createDocumentFragment();
+  if(!h.length){const s=document.createElement('span');s.style.gridColumn='1/-1';s.className='muted';s.textContent='開始對局後顯示標準棋譜。';frag.appendChild(s);}
+  for(let i=0;i<h.length;i+=2)for(const value of [i/2+1+'.',h[i],h[i+1]||'']){const s=document.createElement('span');s.textContent=value;frag.appendChild(s);}
+  $('moves').replaceChildren(frag);$('moves').scrollTop=$('moves').scrollHeight;
+}
+function startGame(type){
+  if(running&&!confirm('開始新對局會結束目前棋局，確定嗎？'))return;
+  invalidateAI();if($('promoDialog').open)$('promoDialog').close();
+  if($('infoDialog').open)$('infoDialog').close();
+  game=new ChessClass();mode=type;myColor=$('side').value;aiDepth=+$('difficulty').value;flipped=type==='ai'&&myColor==='b';
+  clocks={w:600000,b:600000};clockSnapshots=[];last=null;selected=null;targets=[];pendingPromo=null;running=true;lastTick=performance.now();
+  $('lobby').hidden=true;$('modeBadge').textContent=(type==='ai'?'AI 對弈':'本機雙人')+' · 10+0';
+  refresh();if(type==='ai'&&game.turn()!==myColor)requestAI();
+}
+$('startAI').onclick=()=>startGame('ai');$('startLocal').onclick=()=>startGame('local');
+$('flip').onclick=()=>{flipped=!flipped;refresh();};
+$('back').onclick=()=>{
+  if(running&&!confirm('返回大廳會結束目前對局，確定嗎？'))return;
+  settleClock();running=false;invalidateAI();pendingPromo=null;selected=null;targets=[];
+  if($('promoDialog').open)$('promoDialog').close();
+  $('lobby').hidden=false;$('modeBadge').textContent='大廳';$('status').textContent='選擇模式開始新對局，外觀保留。';refresh();
+};
+function clickSquare(square){
+  if(!running||thinking||pendingPromo||!game)return;
+  settleClock();if(!running||mode==='ai'&&game.turn()!==myColor)return;
+  const moves=targets.filter(m=>m.to===square);
+  if(moves.length){
+    if(moves.some(m=>m.promotion)){pendingPromo={from:selected,to:square};$('promoDialog').showModal();return;}
+    commit({from:selected,to:square});return;
+  }
+  const p=game.get(square);selected=p?.color===game.turn()?square:null;
+  targets=selected?game.moves({square:selected,verbose:true}):[];drawBoard();
+}
+for(const type of ['q','r','b','n']){
+  const b=document.createElement('button');b.textContent=glyph[type];b.setAttribute('aria-label','升變為'+labels[type]);
+  b.onclick=()=>{if(!pendingPromo)return;const move={...pendingPromo,promotion:type};pendingPromo=null;$('promoDialog').close();commit(move);};
+  $('promoOptions').appendChild(b);
+}
+$('promoDialog').addEventListener('cancel',e=>e.preventDefault());
+function commit(move){
+  settleClock();if(!running)return;
+  const snapshot={...clocks};let played;
+  try{played=game.move(move);}catch{toast('這一步不是合法走法。');return;}
+  if(!played)return;
+  clockSnapshots.push(snapshot);last={from:played.from,to:played.to};selected=null;targets=[];lastTick=performance.now();refresh();
+  if(game.isGameOver()){
+    if(game.isCheckmate())endGame('將死',(game.turn()==='w'?'黑方':'白方')+'勝出。');
+    else endGame('和棋',game.isStalemate()?'逼和：沒有合法走法，但王沒有被將軍。':game.isThreefoldRepetition()?'三次重複局面。':game.isInsufficientMaterial()?'子力不足。':'達到和棋條件。');
+    return;
+  }
+  if(mode==='ai'&&game.turn()!==myColor)requestAI();
+}
+function endGame(title,text){running=false;invalidateAI();$('status').textContent=title+' · '+text;refresh();dialog(title,text);}
+$('resign').onclick=()=>{
+  if(!running||!confirm('確定認輸？'))return;
+  settleClock();if(!running)return;
+  const side=mode==='ai'?myColor:game.turn();endGame('對局結束',(side==='w'?'白方':'黑方')+'認輸，'+(side==='w'?'黑方':'白方')+'勝出。');
+};
+$('undo').onclick=()=>{
+  if(!running||thinking||pendingPromo||!game.history().length)return;
+  settleClock();if(!running)return;invalidateAI();
+  const count=mode==='ai'&&game.turn()===myColor&&game.history().length>=2?2:1;
+  for(let i=0;i<count;i++){game.undo();clocks=clockSnapshots.pop()||clocks;}
+  const h=game.history({verbose:true});last=h.length?{from:h.at(-1).from,to:h.at(-1).to}:null;
+  selected=null;targets=[];lastTick=performance.now();refresh();
+  if(mode==='ai'&&game.turn()!==myColor)requestAI();
+};
+$('pgn').onclick=()=>{if(game)showText('對局 PGN',game.pgn());};
+
+/* 離線 AI：使用獨立 worker 檔案，模組相對路徑才解析得到 */
+function requestAI(){
+  if(!running||mode!=='ai'||game.turn()===myColor)return;
+  invalidateAI();thinking=true;refresh();const token=generation;
+  const fail=()=>{
+    if(token!==generation||!running)return;
+    invalidateAI();running=false;$('status').textContent='AI 載入失敗，對局已停止。';refresh();
+    dialog('AI 暫時無法使用','請確認 www/ai-worker.js 與 www/vendor/chess.js 都存在，並以 HTTP(S) 或 Capacitor 容器開啟（file:// 會封鎖 Module Worker）。');
+  };
+  try{
+    worker=new Worker(WORKER,{type:'module'});
+    worker.onerror=fail;
+    worker.onmessage=({data})=>{
+      if(data.generation!==generation||!running)return;
+      if(data.error||!data.move){fail();return;}
+      worker.terminate();worker=null;thinking=false;commit(data.move);
+    };
+    worker.postMessage({history:game.history(),depth:aiDepth,generation:token});
+  }catch{fail();}
+}
+
+buildStudio();applyAppearance();refresh();
+try{
+  const module=await import(ENGINE);ChessClass=module.Chess;game=new ChessClass();
+  $('startAI').disabled=false;$('startAI').textContent='開始 AI 對局';$('startLocal').disabled=false;refresh();
+}catch{
+  $('startAI').textContent='棋規引擎未能載入';
+  $('status').textContent='找不到 ./vendor/chess.js；外觀仍可使用。請確認檔案已放入 www/vendor/。';
+}
+</script>
+</body>
+</html>
