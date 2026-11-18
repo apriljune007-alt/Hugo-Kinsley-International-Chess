@@ -1,0 +1,25 @@
+{
+  "name": "hugo-kingsley",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline-first chess platform packaged for Android with Capacitor",
+  "scripts": {
+    "prepare-vendor": "node scripts/prepare-vendor.mjs",
+    "verify": "node scripts/verify-project.mjs",
+    "sync:android": "npm run prepare-vendor && npx cap sync android",
+    "android:add": "npx cap add android",
+    "android:debug": "cd android && ./gradlew assembleDebug --no-daemon",
+    "android:release": "cd android && ./gradlew bundleRelease --no-daemon"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "chess.js": "1.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  },
+  "engines": {
+    "node": ">=20 <23"
+  }
+}

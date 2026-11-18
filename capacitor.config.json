@@ -1,0 +1,12 @@
+{
+  "appId": "com.hugokingsley.chess",
+  "appName": "Hugo Kingsley",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#10151d",
+    "allowMixedContent": false
+  }
+}
